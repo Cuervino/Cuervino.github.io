@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Pointage courses</title>
+<style>
+:root{--bg:#f6f5f2;--card:#fff;--ink:#1d1d1b;--muted:#77756f;--line:#e4e2dc;--ok:#1f7a4d;--okbg:#e6f3ec;--ko:#b3261e;--kobg:#fbe9e7;--accent:#0b5cad}
+@media (prefers-color-scheme:dark){:root{--bg:#141413;--card:#1e1e1c;--ink:#ecebe6;--muted:#9a988f;--line:#2e2d2a;--ok:#5cc28f;--okbg:#17291f;--ko:#f08a80;--kobg:#2e1a18;--accent:#6aa8ec;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.35 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:0 14px calc(90px + env(safe-area-inset-bottom))}
+header{position:sticky;top:0;z-index:2;background:var(--bg);padding:calc(10px + env(safe-area-inset-top)) 0 10px;border-bottom:1px solid var(--line)}
+h1{font-size:18px;margin:0 0 6px}
+.bar{height:6px;background:var(--line);border-radius:3px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--ok);width:0;transition:width .2s}
+.stats{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:13px;color:var(--muted);margin-top:6px}
+.stats b{color:var(--ink)}
+.tools{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+button{font:inherit;font-size:14px;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:6px 10px;cursor:pointer}
+button.on{border-color:var(--accent);color:var(--accent)}
+h2{font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin:18px 0 6px}
+ul{list-style:none;margin:0;padding:0;background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+li{display:flex;align-items:center;gap:10px;padding:10px 10px;border-top:1px solid var(--line);cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent}
+li:first-child{border-top:0}
+.box{flex:none;width:26px;height:26px;border-radius:7px;border:2px solid var(--line);display:grid;place-items:center;font-weight:700;color:#fff}
+.qty{flex:none;min-width:34px;text-align:center;font-weight:700;font-size:15px;border-radius:6px;padding:2px 4px}
+.qty.multi{background:var(--accent);color:#fff}
+.txt{flex:1;min-width:0}
+.name{display:block}
+.meta{display:block;font-size:12.5px;color:var(--muted)}
+.miss{flex:none;font-size:12px;padding:4px 7px}
+li.done{background:var(--okbg)}
+li.done .box{background:var(--ok);border-color:var(--ok)}
+li.done .box::after{content:"✓"}
+li.done .name{color:var(--muted);text-decoration:line-through}
+li.missing{background:var(--kobg)}
+li.missing .box{border-color:var(--ko)}
+li.missing .name{color:var(--ko)}
+li.missing .miss{border-color:var(--ko);color:var(--ko);background:transparent}
+body.todo li.done{display:none}
+body.todo section:not(:has(li:not(.done))){display:none}
+#missList{margin-top:24px}
+footer{margin-top:24px;font-size:13px;color:var(--muted)}
+</style>
+</head>
+<body>
+<header>
+  <h1>Courses Carrefour du 9 octobre 2026</h1>
+  <div class="bar"><i id="prog"></i></div>
+  <div class="stats">
+    <span><b id="nDone">0</b> / <span id="nAll"></span> lignes pointées</span>
+    <span><b id="nMiss">0</b> manquante(s)</span>
+    <span>Valeur manquante : <b id="vMiss">0,00 €</b></span>
+  </div>
+  <div class="tools">
+    <button id="tTodo">Masquer les pointés</button>
+    <button id="tReset">Tout remettre à zéro</button>
+  </div>
+</header>
+<main id="list"></main>
+<div id="missList"></div>
+<footer>Touche une ligne pour la pointer. "Manque" la marque comme absente, pour la demande de remboursement. Le pointage est gardé dans ce navigateur. Total commande : 345,29 €.</footer>
+
+<script>
+const ORDER = "carrefour-2026-10-09";
+// [catégorie, [[produit, format, quantité, prix total de la ligne], ...]]
+const DATA = [
+["Yaourts et fromages blancs",[["Petits suisses nature 9,5% MG Gervais","12 pots de 60 g",1,2.55]]],
+["Huiles, vinaigres, condiments",[["Jus de citron pur jus bio Carrefour Bio","bouteille 25 cL",1,1.69],
+ ["Cornichons aigres-doux Carrefour Classic'","bocal 380 g",1,2.11]]],
+["Conserves et bocaux",[
+ ["Haricots blancs Carrefour Classic'","boîte 265 g",2,2.02],
+ ["Filets de maquereaux moutarde à l'ancienne Petit Navire","boîte 225 g",1,3.06],
+ ["Filets de maquereaux vin blanc et aromates Simpl","boîte 176 g",1,1.58],
+ ["Sardines huile d'olive Carrefour Classic'","boîte 135 g",2,3.16],
+ ["Ratatouille provençale Cassegrain","boîte 185 g",1,2.29],
+ ["Cœurs d'artichauts Carrefour Classic'","bocal 225 g",1,2.81],
+ ["Petits pois carottes extra-fins Carrefour Classic'","boîte 530 g",1,1.45],
+ ["Haricots noirs cuisson vapeur D'Aucy","2 boîtes de 130 g",1,2.22],
+ ["Ratatouille provençale Carrefour Classic'","boîte 375 g",1,1.19],
+ ["Filets de maquereaux au naturel Carrefour Extra","boîte 98 g",1,1.96],
+ ["Asperges blanches moyennes Carrefour Classic'","bocal 205 g",1,2.22],
+ ["Foie de morue fumé MSC Carrefour Extra","boîte 121 g",1,2.07],
+ ["Sardines huile d'olive Minerva","boîte 120 g",1,2.11]]],
+["Le marché",[
+ ["Carottes bio","sachet 1,5 kg",1,2.79],
+ ["Citrons bio","filet 500 g",1,1.79],
+ ["Raisins secs sultanines bio Carrefour Bio","sachet 200 g",2,5.02],
+ ["Limes bio","filet de 3",1,2.29],
+ ["Oranges bio","filet 1 kg",1,2.99],
+ ["Pommes jaunes bio","1,5 kg",1,3.99],
+ ["Concombres bio","pièce",2,3.58],
+ ["Champignons bruns bio","barquette 200 g",1,2.29]]],
+["Légumes",[
+ ["Tomates cerises allongées Simpl","barquette 250 g",2,1.98],
+ ["Pommes de terre Filière Qualité Carrefour","filet 2 kg",1,3.00],
+ ["Courgettes vrac","1 kg",1,2.29],
+ ["Oignons Simpl","filet 1,5 kg",1,1.69],
+ ["Betteraves rouges cuites","sachet 500 g",1,1.29],
+ ["Radis roses","botte",1,1.29]]],
+["Fruits",[
+ ["Pommes Pink Lady","pièce, environ 200 g",3,2.13],
+ ["Pomelos rouges","pièce",2,1.60]]],
+["Fruits et légumes secs",[
+ ["Pruneaux d'Agen dénoyautés Reflets de France","sachet 500 g",1,5.79],
+ ["Graines de tournesol salées Churruca","sachet 250 g",1,3.34]]],
+["Traiteur de la mer",[
+ ["Filets de hareng fumé au naturel Carrefour Classic'","paquet 200 g",1,1.79],
+ ["Filets d'anchois huile de tournesol Carrefour Extra","100 g",1,2.85],
+ ["Surimi Le Moelleux Fleury Michon","boîte de 24 bâtonnets",1,3.69],
+ ["Saumon fumé Simpl","paquet 200 g",1,4.95],
+ ["Surimi Le Moelleux Fleury Michon","barquette de 30 bâtonnets",1,3.79]]],
+["Charcuterie",[
+ ["Allumettes fumées Carrefour Classic'","2 barquettes de 100 g",1,1.86],
+ ["Blanc de poulet réduit en sel Fleury Michon","barquette 4 tranches 160 g",3,8.43],
+ ["Coppa fines tranches","paquet 75 g",2,4.00],
+ ["Boudin noir aux oignons Carrefour","barquette de 2, 250 g",2,7.38],
+ ["Pâté crème forestière Carrefour","barquette 170 g",1,2.99]]],
+["Boucherie, volaille",[
+ ["Chipolatas supérieures Carrefour Le Marché","barquette de 6, 330 g",1,3.99],
+ ["Filets de poulet blanc Le Gaulois","barquette 720 g",1,10.79]]],
+["Poissons surgelés, frites",[
+ ["Poisson pané merlu MSC Findus","boîte de 10, 510 g",1,6.39],
+ ["Filets de cabillaud Carrefour Extra","sachet 600 g",1,12.99],
+ ["Colin d'Alaska en tranches Carrefour Classic'","4 tranches de 100 g",1,3.75],
+ ["Pommes rissolées Carrefour Classic'","sachet 1 kg",1,1.89]]],
+["Beurres et crèmes",[
+ ["Crème fraîche épaisse légère 15% Carrefour Classic'","pot 497 g",1,1.65],
+ ["Beurre moulé de Bretagne doux Carrefour Original","plaquette 250 g",1,2.69],
+ ["Crème fluide légère 12% Carrefour Classic'","bouteille 40 cL",1,1.79]]],
+["Fromages",[
+ ["Bleu crémeux Carrefour Classic'","250 g",1,2.35],
+ ["Fromage de chèvre Soignon","bûche 200 g",1,2.35],
+ ["Gorgonzola AOP Carrefour Extra","barquette 150 g",1,2.59],
+ ["Brique de brebis Lou Pérac","barquette 150 g",2,6.70],
+ ["Camembert Le Caractère Carrefour Original","250 g",1,1.86],
+ ["Comté AOP Entremont","paquet 200 g",1,3.48],
+ ["Bleu fondant Carrefour Classic'","boîte 125 g",1,2.34],
+ ["Emmental râpé Simpl","sachet 200 g",1,1.61],
+ ["Brillat-Savarin IGP Reflets de France","200 g",1,3.65]]],
+["Plats cuisinés, pâtes, pizza",[
+ ["Saucisses aux lentilles Carrefour Classic'","boîte 420 g",1,1.25],
+ ["Paella Valenciana Carrefour Sensation","sachet 1 kg",1,4.25],
+ ["Nouilles Banzaï poulet","pot 67 g",2,3.28],
+ ["Nouilles Banzaï bœuf","pot 67 g",1,1.64],
+ ["Nouilles Nissin bœuf 5 épices","pot 64 g",1,2.28],
+ ["Nouilles Nissin yakitori soba","sachet 108 g",1,2.00],
+ ["Pâte feuilletée Tarte en Or Herta","paquet 230 g",1,2.07],
+ ["Pizza Dolce Prosciutto Sodebo","400 g",1,4.02]]],
+["Pain, petit déjeuner",[
+ ["Pain de mie complet maxi Harrys","21 tranches",1,2.64],
+ ["Pain tartine spécial campagne La Boulangère","12 tranches, 450 g",1,2.32],
+ ["Pain de mie 7 céréales Harrys","14 tranches",3,6.33],
+ ["Confiture myrtille Carrefour Original","pot 370 g",1,1.95],
+ ["Confiture abricot Carrefour Original","pot 370 g",1,1.45],
+ ["Flocons d'avoine Quaker","boîte 800 g",2,5.30]]],
+["Boissons chaudes",[
+ ["Cacao en poudre Carrefour Original","boîte 250 g",1,3.45],
+ ["Thé vert Twinings","25 sachets",1,3.06],
+ ["Café soluble Sélection Nescafé","flacon 200 g",2,14.40]]],
+["Laits, boissons végétales, eaux",[
+ ["Lait demi-écrémé Carrefour Extra","pack 6 x 1 L",3,20.52],
+ ["Boisson avoine bio Carrefour Bio","brique 1 L",1,1.59],
+ ["Boisson avoine sans sucres bio Bjorg","brique 1 L",1,2.45],
+ ["Eau de source Carrefour Classic'","6 x 1,5 L",1,1.74],
+ ["Volvic","6 x 1,5 L",1,3.36],
+ ["Hépar","6 x 75 cL",1,4.49]]],
+["Entretien, papier",[
+ ["Lessive laine Mir","bidon 1,4 L",1,8.63],
+ ["Lessive douceur d'amande Persil","bidon 2,565 L",1,12.30],
+ ["Liquide vaisselle aloe vera Carrefour Essential","flacon 500 mL",1,0.85],
+ ["Essuie-tout Carrefour Essential","6 rouleaux",1,3.99],
+ ["Papier toilette Carrefour Essential","24 rouleaux",1,4.97],
+ ["Papier cuisson Carrefour","20 feuilles",1,1.22]]],
+["Hygiène",[
+ ["Gel lavant amande douce Cadum","flacon 1 L",1,4.71],
+ ["Savon mains recharge Palmolive","recharge 250 mL",2,2.10],
+ ["Dentifrice Sensodyne Soin Complet","tube 75 mL",2,9.86],
+ ["Brosses à dents souples Signal","lot de 4",1,2.60]]]
+];
+
+const KEY = "pointage-" + ORDER;
+let state = {};
+try { state = JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) {}
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} };
+const eur = n => n.toFixed(2).replace(".", ",") + " €";
+
+const items = [];
+const list = document.getElementById("list");
+DATA.forEach(([cat, rows], ci) => {
+  const sec = document.createElement("section");
+  sec.innerHTML = `<h2>${cat}</h2><ul></ul>`;
+  const ul = sec.querySelector("ul");
+  rows.forEach(([name, fmt, q, price], ri) => {
+    const id = ci + "-" + ri;
+    items.push({id, name, q, price});
+    const li = document.createElement("li");
+    li.dataset.id = id;
+    li.innerHTML = `<span class="box"></span><span class="qty ${q > 1 ? "multi" : ""}">x${q}</span>
+      <span class="txt"><span class="name"></span><span class="meta"></span></span>
+      <button class="miss">Manque</button>`;
+    li.querySelector(".name").textContent = name;
+    li.querySelector(".meta").textContent = fmt + ", " + eur(price);
+    li.addEventListener("click", e => {
+      if (e.target.closest(".miss")) { state[id] = state[id] === "m" ? undefined : "m"; }
+      else { state[id] = state[id] === "d" ? undefined : "d"; }
+      if (!state[id]) delete state[id];
+      save(); render();
+    });
+    ul.appendChild(li);
+  });
+  list.appendChild(sec);
+});
+
+function render() {
+  let done = 0, miss = 0, vmiss = 0;
+  const missed = [];
+  document.querySelectorAll("li[data-id]").forEach(li => {
+    const s = state[li.dataset.id];
+    li.classList.toggle("done", s === "d");
+    li.classList.toggle("missing", s === "m");
+  });
+  items.forEach(it => {
+    if (state[it.id] === "d") done++;
+    if (state[it.id] === "m") { miss++; vmiss += it.price; missed.push(it); }
+  });
+  document.getElementById("nAll").textContent = items.length;
+  document.getElementById("nDone").textContent = done;
+  document.getElementById("nMiss").textContent = miss;
+  document.getElementById("vMiss").textContent = eur(vmiss);
+  document.getElementById("prog").style.width = ((done + miss) / items.length * 100) + "%";
+  const ml = document.getElementById("missList");
+  ml.innerHTML = missed.length ? "<h2>Manquants</h2><ul></ul>" : "";
+  missed.forEach(it => {
+    const li = document.createElement("li");
+    li.style.cursor = "default";
+    li.textContent = `x${it.q} ${it.name} (${eur(it.price)})`;
+    ml.querySelector("ul").appendChild(li);
+  });
+}
+
+const tTodo = document.getElementById("tTodo");
+tTodo.onclick = () => { tTodo.classList.toggle("on", document.body.classList.toggle("todo")); };
+const tReset = document.getElementById("tReset");
+tReset.onclick = () => {
+  if (tReset.dataset.armed) { state = {}; save(); render(); delete tReset.dataset.armed; tReset.textContent = "Tout remettre à zéro"; }
+  else { tReset.dataset.armed = 1; tReset.textContent = "Confirmer la remise à zéro ?"; setTimeout(() => { delete tReset.dataset.armed; tReset.textContent = "Tout remettre à zéro"; }, 3000); }
+};
+render();
+</script>
+</body>
+</html>
